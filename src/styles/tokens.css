@@ -1,0 +1,84 @@
+/* Beacon AVL — Design Tokens (light theme — matches design file) */
+:root {
+  /* Brand */
+  --royal-blue: #1A4FBF;
+  --royal-blue-700: #143F99;
+  --electric-blue: #2E87F5;
+  --electric-blue-700: #1E6FD9;
+  --amber-gold: #F5A623;
+  --amber-gold-700: #D88B0F;
+
+  --near-black: #12151A;
+  --dark-card: #1E2530;
+  --dark-card-hi: #2A3340;
+  --mid-gray: #4A5568;
+  --light-gray: #F4F6F9;
+  --white: #FFFFFF;
+
+  --border-light: rgba(18, 21, 26, 0.08);
+  --border-light-strong: rgba(18, 21, 26, 0.16);
+
+  --success: #2F9E5E;
+  --warning: #F5A623;
+  --danger:  #C53030;
+  --info:    #2E87F5;
+
+  /* Semantic — light */
+  --bg: var(--white);
+  --bg-alt: var(--light-gray);
+  --surface: var(--white);
+  --surface-alt: var(--light-gray);
+  --fg1: var(--near-black);
+  --fg2: var(--mid-gray);
+  --fg3: #6B7280;
+  --link: var(--royal-blue);
+  --accent: var(--amber-gold);
+  --brand: var(--royal-blue);
+  --border: var(--border-light);
+  --border-strong: var(--border-light-strong);
+  --focus-ring: var(--electric-blue);
+
+  /* Type */
+  --font-display: 'Montserrat', system-ui, sans-serif;
+  --font-body: 'Open Sans', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(18,21,26,.06);
+  --shadow-md: 0 4px 12px rgba(18,21,26,.08), 0 1px 2px rgba(18,21,26,.06);
+  --shadow-lg: 0 16px 32px rgba(18,21,26,.12), 0 2px 6px rgba(18,21,26,.08);
+
+  /* Motion */
+  --ease: cubic-bezier(.2,.7,.2,1);
+  --dur-fast: 120ms;
+  --dur: 180ms;
+
+  /* Brand gradient */
+  --brand-gradient: linear-gradient(135deg, #1A4FBF 0%, #2E87F5 45%, #F5A623 100%);
+}
+
+::selection { background: var(--amber-gold); color: var(--near-black); }
+
+/* ===== Dark theme override ===== */
+[data-theme="dark"] {
+  --bg: #0B0E12;
+  --bg-alt: #181E27;
+  --surface: var(--dark-card);
+  --surface-alt: #181E27;
+  --fg1: #F4F5F7;
+  --fg2: #B6BEC9;
+  --fg3: #8893A2;
+  --link: var(--electric-blue);
+  --border: rgba(255,255,255,.08);
+  --border-strong: rgba(255,255,255,.16);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.45), 0 1px 2px rgba(0,0,0,.35);
+  --shadow-lg: 0 16px 32px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.35);
+}
