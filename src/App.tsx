@@ -29,6 +29,9 @@ const SubArrayModal        = React.lazy(() => import('./components/modals/SubArr
 const SnapshotModal        = React.lazy(() => import('./components/modals/Snapshot')       .then(m => ({ default: m.SnapshotModal })));
 const AutoTreatModal       = React.lazy(() => import('./components/modals/AutoTreat')      .then(m => ({ default: m.AutoTreatModal })));
 const ProposalModal        = React.lazy(() => import('./components/modals/Proposal')       .then(m => ({ default: m.ProposalModal })));
+// Phase C — the three.js presentation view. three.js is ~150 kB gz, so it
+// lives in its own chunk and only loads the first time Present mode opens.
+const PresentView3DLazy    = React.lazy(() => import('./components/present/PresentView3D') .then(m => ({ default: m.PresentView3D })));
 
 const AUTOSAVE_KEY = 'beacon.autosave.v1';
 import {
@@ -45,6 +48,7 @@ import { analyzeModes, computeModalField } from './engine/modal';
 export default function App() {
   const presentationMode = useStore(s => s.presentationMode);
   const setPresentationMode = useStore(s => s.setPresentationMode);
+  const presentStyle = useStore(s => s.presentStyle);
   const undo = useStore(s => s.undo);
   const redo = useStore(s => s.redo);
   const toggleHeatmap = useStore(s => s.toggleHeatmap);
@@ -354,22 +358,49 @@ export default function App() {
         {!presentationMode && <ToolRail />}
         {!presentationMode && <Catalog />}
         <div className="viewport">
-          <Viewport />
-          <ViewportOverlays />
+          {presentationMode && presentStyle === 'render' ? (
+            <Suspense fallback={
+              <div style={{
+                position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
+                justifyContent: 'center', background: '#0b0e13',
+                color: 'rgba(255,255,255,0.6)', fontFamily: 'Montserrat', fontSize: 13,
+              }}>Preparing 3D view…</div>
+            }>
+              <PresentView3DLazy />
+            </Suspense>
+          ) : (
+            <>
+              <Viewport />
+              <ViewportOverlays />
+            </>
+          )}
           {!presentationMode && <DesignFlow />}
           {hint && <div className="hint-flash"><span style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: 6 }}>✓</span>{hint}</div>}
           {presentationMode && (
-            <button
-              onClick={() => useStore.getState().setPresentationMode(false)}
-              style={{
-                position: 'absolute', top: 16, right: 16, zIndex: 30,
-                background: 'rgba(255,255,255,0.95)', color: '#12151A',
-                padding: '8px 14px', borderRadius: 999, border: 0,
-                fontFamily: 'Montserrat', fontWeight: 600, fontSize: 12,
-                cursor: 'pointer', pointerEvents: 'auto',
-              }}>
-              Exit presentation (Esc)
-            </button>
+            <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 30, display: 'flex', gap: 8 }}>
+              {presentStyle === 'schematic' && (
+                <button
+                  onClick={() => useStore.getState().setPresentStyle('render')}
+                  style={{
+                    background: 'var(--royal-blue, #1A4FBF)', color: '#fff',
+                    padding: '8px 14px', borderRadius: 999, border: 0,
+                    fontFamily: 'Montserrat', fontWeight: 600, fontSize: 12,
+                    cursor: 'pointer', pointerEvents: 'auto',
+                  }}>
+                  3D Render
+                </button>
+              )}
+              <button
+                onClick={() => useStore.getState().setPresentationMode(false)}
+                style={{
+                  background: 'rgba(255,255,255,0.95)', color: '#12151A',
+                  padding: '8px 14px', borderRadius: 999, border: 0,
+                  fontFamily: 'Montserrat', fontWeight: 600, fontSize: 12,
+                  cursor: 'pointer', pointerEvents: 'auto',
+                }}>
+                Exit presentation (Esc)
+              </button>
+            </div>
           )}
         </div>
         {!presentationMode && <Inspector />}

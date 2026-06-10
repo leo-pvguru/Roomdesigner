@@ -14,6 +14,9 @@ import { buildItemFromTemplate } from '../src/utils/itemBuilder';
 import { EQUIPMENT } from '../src/constants/equipmentLibrary';
 import { MATERIALS, getScattering, materialNRC } from '../src/constants/materials';
 import { parseRoomPlanJSON } from '../src/importers/roomplan';
+import {
+  synthesizeIR, octaveBandpassInPlace, schroederT30, defaultListener, SPEED_OF_SOUND_FT_S,
+} from '../src/engine/auralize';
 import { OCTAVE_BANDS } from '../src/types';
 import type { RoomState, EquipmentItem } from '../src/types';
 
@@ -279,6 +282,90 @@ section('RoomPlan importer');
   let threw = false;
   try { parseRoomPlanJSON({ walls: [] }); } catch { threw = true; }
   ok(threw, 'empty scan throws a friendly error');
+}
+
+// ---------- Auralization (Phase C) ----------
+section('Auralization — IR synthesis');
+{
+  // Hard floor so the treatment delta is visible
+  const room = makeRoom({
+    surfaces: [
+      { id: 's0', kind: 'wall', segmentIndex: 0, materialId: 'drywall' },
+      { id: 's1', kind: 'wall', segmentIndex: 1, materialId: 'brick-bare' },
+      { id: 's2', kind: 'wall', segmentIndex: 2, materialId: 'drywall' },
+      { id: 's3', kind: 'wall', segmentIndex: 3, materialId: 'concrete-sealed' },
+      { id: 'sf', kind: 'floor', segmentIndex: 0, materialId: 'concrete-floor' },
+      { id: 'sc', kind: 'ceiling', segmentIndex: 0, materialId: 'drywall' },
+    ],
+  });
+  const spk = makeSpeaker();
+  const base = { room, equipment: [spk], zones: [], groups: [] };
+
+  const ir = synthesizeIR(base);
+  ok(ir != null, 'IR synthesizes for a basic room');
+  if (ir) {
+    ok(ir.left.length === ir.right.length && ir.left.length > 0, 'stereo buffers allocated, equal length');
+
+    // Direct-tap timing: distance speaker → listener over c
+    const lp = defaultListener(room);
+    const dist = Math.hypot(spk.x - lp.x, spk.y - lp.y, spk.z - lp.z);
+    const expected = dist / SPEED_OF_SOUND_FT_S;
+    ok(Math.abs(ir.directDelaySec - expected) < 0.001,
+      `direct arrival matches geometry (${(ir.directDelaySec * 1000).toFixed(1)}ms vs ${(expected * 1000).toFixed(1)}ms)`);
+
+    // IR length covers the decay
+    ok(ir.lengthSec >= ir.t60ByBand[1000] * 0.9,
+      `IR long enough for the 1k decay (${ir.lengthSec.toFixed(2)}s vs T60 ${ir.t60ByBand[1000].toFixed(2)}s)`);
+
+    // Measured decay slope ≈ the Eyring T60 that drove the tail (1 kHz band)
+    const band = new Float32Array(ir.left);
+    octaveBandpassInPlace(band, ir.sampleRate, 1000);
+    const t30 = schroederT30(band, ir.sampleRate, ir.directDelaySec + 0.09);
+    ok(t30 != null, 'Schroeder T30 measurable from the IR');
+    if (t30 != null) {
+      const target = ir.t60ByBand[1000];
+      ok(Math.abs(t30 - target) / target < 0.4,
+        `measured decay ${t30.toFixed(2)}s within 40% of Eyring T60 ${target.toFixed(2)}s`);
+    }
+
+    // Stereo: channels decorrelated (tail noise differs)
+    let differs = false;
+    for (let i = Math.floor(ir.left.length / 2); i < ir.left.length; i++) {
+      if (ir.left[i] !== ir.right[i]) { differs = true; break; }
+    }
+    ok(differs, 'left/right tails are decorrelated');
+
+    // Determinism: same seed → identical output
+    const ir2 = synthesizeIR(base);
+    ok(ir2 != null && ir2.left[1000] === ir.left[1000] && ir2.right[5000] === ir.right[5000],
+      'same seed reproduces the identical IR');
+  }
+
+  // Treatment A/B: rugs strip out in the untreated variant → longer T60
+  const rugTpl = EQUIPMENT.find(t => t.kind === 'rug' && (t.defaultW ?? 0) >= 15);
+  ok(!!rugTpl, 'rug template available for A/B fixture');
+  if (rugTpl) {
+    const rugs = [0, 1].map(i => ({
+      ...buildItemFromTemplate(rugTpl, { x: 12 + i * 14, y: 15 }),
+      id: `qa-rug-${i}`,
+    }));
+    const treated = synthesizeIR({ ...base, equipment: [spk, ...rugs], includeTreatment: true });
+    const untreated = synthesizeIR({ ...base, equipment: [spk, ...rugs], includeTreatment: false });
+    ok(treated != null && untreated != null, 'treated + untreated variants synthesize');
+    if (treated && untreated) {
+      ok(treated.t60ByBand[1000] < untreated.t60ByBand[1000],
+        `treatment shortens T60 (${treated.t60ByBand[1000].toFixed(2)}s < ${untreated.t60ByBand[1000].toFixed(2)}s)`);
+    }
+  }
+
+  // Outdoor: no reverberant field → no tail, short IR
+  const outdoor = synthesizeIR({ ...base, room: makeRoom({ roomType: 'outdoor' }) });
+  ok(outdoor != null && outdoor.outdoor, 'outdoor room flagged');
+  if (outdoor) ok(outdoor.lengthSec < 1.0, `outdoor IR is direct-field only (${outdoor.lengthSec.toFixed(2)}s)`);
+
+  // No speakers placed → virtual voice source still auditions the room
+  const virtual = synthesizeIR({ ...base, equipment: [] });
+  ok(virtual != null && virtual.tapCount > 0, 'virtual source used when no PA is placed');
 }
 
 // ---------- Summary ----------

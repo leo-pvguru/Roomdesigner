@@ -146,6 +146,9 @@ interface Store {
 
   // ===== Modes (UI) =====
   presentationMode: boolean;
+  /** Presentation rendering style — 'render' = the three.js photoreal view,
+   *  'schematic' = the classic SVG iso/walk viewport. Phase C. */
+  presentStyle: 'render' | 'schematic';
   activeAppTab: 'design' | 'acoustics' | 'bom' | 'present';
   hint: string | null;
   openModal: 'welcome' | 'export' | 'new-project' | 'share' | 'custom-equipment' | 'bom' | 'sub-array' | 'snapshot' | 'auto-treat' | 'proposal' | null;
@@ -304,6 +307,7 @@ interface Store {
   markSimulationDirty: () => void;
 
   setPresentationMode: (b: boolean) => void;
+  setPresentStyle: (s: 'render' | 'schematic') => void;
   setActiveAppTab: (t: Store['activeAppTab']) => void;
   setHint: (h: string | null) => void;
   setOpenModal: (m: Store['openModal']) => void;
@@ -501,6 +505,7 @@ export const useStore = create<Store>((set, get) => ({
   modalHeatmap: null,
 
   presentationMode: false,
+  presentStyle: 'render',
   activeAppTab: 'design',
   hint: null,
   openModal: 'welcome',
@@ -1055,6 +1060,7 @@ export const useStore = create<Store>((set, get) => ({
   markSimulationDirty() { set({ simulationDirty: true }); },
 
   setPresentationMode(b) { set({ presentationMode: b }); },
+  setPresentStyle(s) { set({ presentStyle: s }); },
   setActiveAppTab(t) { set({ activeAppTab: t }); },
   setHint(h) {
     set({ hint: h });
